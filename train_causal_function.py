@@ -203,9 +203,9 @@ def train(args):
             loss = bce_criterion(pos_logits[indices], pos_labels[indices])
             loss += bce_criterion(neg_logits[indices], neg_labels[indices])
             if args.use_causal:
-                loss += p_lambda * torch.norm(causal_mask, 1)
+                loss += p_lambda * torch.norm(causal_mask, 1, dim=[1,2]).mean()
                 K = causal_mask.size(-1)
-                diagonal = (torch.exp(causal_mask * causal_mask)).diagonal(offset=0, dim1=-2, dim2=-1)
+                diagonal = (torch.exp((causal_mask * causal_mask).clip(max=14))).diagonal(offset=0, dim1=-2, dim2=-1)
                 trace = diagonal.sum(dim=-1)
 
                 # loss += beta1 * abs(trace - K).mean()
@@ -234,22 +234,22 @@ def train(args):
             f.flush()
             print(
                 "loss in epoch {} iteration {}: {} pos loss:{} neg loss:{} norm loss:{} trace loss:{} l2_reg:{}".format(epoch, step, bce_criterion(pos_logits[indices], pos_labels[indices]).item() + bce_criterion(neg_logits[indices], neg_labels[indices]).item(), 
-                                                                                                              bce_criterion(pos_logits[indices], pos_labels[indices]).item(),
-                                                                                                              bce_criterion(neg_logits[indices], neg_labels[indices]).item(),
-                                                                                                              torch.norm(causal_mask, 1).item(),
-                                                                                                              abs(trace - K).mean().item(),
-                                                                                                              lr_reg.item())
+                                                                                                            bce_criterion(pos_logits[indices], pos_labels[indices]).item(),
+                                                                                                            bce_criterion(neg_logits[indices], neg_labels[indices]).item(),
+                                                                                                            torch.norm(causal_mask, 1, dim=[1,2]).mean(),
+                                                                                                            abs(trace - K).mean().item(),
+                                                                                                            lr_reg.item())
             )  # expected 0.4~0.6 after init few epochs
             f.write(
                 "loss in epoch {} iteration {}: {} pos loss:{} neg loss:{} norm loss:{} trace loss:{} l2_reg:{}".format(epoch, step, bce_criterion(pos_logits[indices], pos_labels[indices]).item() + bce_criterion(neg_logits[indices], neg_labels[indices]).item(), 
-                                                                                                              bce_criterion(pos_logits[indices], pos_labels[indices]).item(),
-                                                                                                              bce_criterion(neg_logits[indices], neg_labels[indices]).item(),
-                                                                                                              torch.norm(causal_mask, 1).item(),
-                                                                                                              abs(trace - K).mean().item(),
-                                                                                                              lr_reg.item()) + "\n"
+                                                                                                            bce_criterion(pos_logits[indices], pos_labels[indices]).item(),
+                                                                                                            bce_criterion(neg_logits[indices], neg_labels[indices]).item(),
+                                                                                                            torch.norm(causal_mask, 1, dim=[1,2]).mean(),
+                                                                                                            abs(trace - K).mean().item(),
+                                                                                                            lr_reg.item()) + "\n"
             )
 
-        if epoch % 40 == 0:
+        if epoch % 10 == 0:
             model.eval()
             t1 = time.time() - t0
             T += t1

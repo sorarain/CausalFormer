@@ -549,13 +549,17 @@ class CauseFormer(torch.nn.Module):
                 # causal_mask = torch.tril(torch.ones((tl, tl), dtype=torch.bool, device=self.dev))
                 causal_mask = causal_weight
             else:
+                causal_z = causal_seqs
                 for layer in self.causal_layer:
-                    causal_z, _ = layer(causal_seqs, attn_mask=causal_attn_mask)
-                causal_weight = self.batch_cov(causal_z.permute(0, 2, 1)).clamp(max=3)
+                    causal_z, _ = layer(causal_z, attn_mask=causal_attn_mask)
+                assert not torch.any(torch.isnan(causal_seqs)),f"{causal_seqs}"
+                assert not torch.any(torch.isinf(causal_seqs)),f"{causal_seqs}"
+                # causal_weight = self.batch_cov(causal_z.permute(0, 2, 1)).clamp(max=3)
+                causal_weight = torch.matmul(causal_z, causal_z.permute(0, 2, 1))
                 # causal_mask = torch.where(causal_weight > 0.7, 0.0, 1.0)
                 causal_mask = causal_weight[:, 1:, :-1]
-                assert not torch.any(torch.isnan(causal_weight)),f"{causal_weight}"
-                assert not torch.any(torch.isnan(causal_weight)),f"{causal_weight}"
+                assert not torch.any(torch.isnan(causal_weight)),f"{causal_weight} {causal_z}"
+                assert not torch.any(torch.isinf(causal_weight)),f"{causal_weight}"
                 diag = torch.diag_embed(1.0 / torch.sqrt(torch.diagonal(causal_weight,dim1=-2,dim2=-1)),dim1=1,dim2=2)
                 assert not torch.any(torch.isnan(diag)),f"{diag},{torch.diagonal(causal_weight,dim1=-2,dim2=-1)}" 
                 assert not torch.any(torch.isinf(diag)),f"{diag},{torch.diagonal(causal_weight,dim1=-2,dim2=-1)}" 

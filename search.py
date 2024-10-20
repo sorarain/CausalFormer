@@ -25,7 +25,7 @@ parser.add_argument("--lr", default=0.001, type=float)
 parser.add_argument("--maxlen", default=200, type=int)
 parser.add_argument("--hidden_units", default=64, type=int)
 parser.add_argument("--num_blocks", default=4, type=int)
-parser.add_argument("--num_epochs", default=1000, type=int)
+parser.add_argument("--num_epochs", default=200, type=int)
 parser.add_argument("--num_heads", default=1, type=int)
 parser.add_argument("--dropout_rate", default=0.2, type=float)
 parser.add_argument("--l2_emb", default=0.0, type=float)
@@ -42,7 +42,7 @@ parser.add_argument("--beta1", default=0.5, type=float)
 
 args = parser.parse_args()
 
-p_lambda_list = [0.000001, 0.0000001, 0.00001, 0.00000001, 0.0001]
+p_lambda_list = [0.000001, 0.0000001, 0.00001, 0.00000001, 0.0001, 0]
 beta1_list = [0.5 * x for x in [1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3]]
 alpha_list = [1e-2, 1e-1, 1e0, 1e1, 1e2]
 result = {}
