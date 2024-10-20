@@ -166,4 +166,4 @@ cython_debug/
 *_search/
 *_causal/
 *.pyc
-*__pycache__/
+/*__pycache__/
