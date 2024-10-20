@@ -72,13 +72,13 @@ def sample_function(user_train, usernum, itemnum, batch_size, maxlen, result_que
 
 
 class WarpSampler(object):
-    def __init__(self, User, usernum, itemnum, batch_size=64, maxlen=10, n_workers=1):
+    def __init__(self, User, usernum, itemnum, batch_size=64, maxlen=10, n_workers=1, target=sample_function):
         self.result_queue = Queue(maxsize=n_workers * 10)
         self.processors = []
         for i in range(n_workers):
             self.processors.append(
                 Process(
-                    target=sample_function,
+                    target=target,
                     args=(
                         User,
                         usernum,
@@ -233,5 +233,56 @@ def evaluate_valid(model, dataset, args):
         if valid_user % 100 == 0:
             print(".", end="")
             sys.stdout.flush()
+
+    return NDCG / valid_user, HT / valid_user
+
+
+def auc_calc(y, pred):
+    pos_num = sum(y)
+    neg_num = len(y) - pos_num
+    
+    pos_sample_ids = [ i for i in range(len(y)) if y[i] == 1]
+    neg_sample_ids = [ i for i in range(len(y)) if y[i] == 0]
+    
+    score = 0
+    for i in pos_sample_ids:
+        for j in neg_sample_ids:
+            if pred[i] > pred[j]:
+                score += 1
+            elif pred[i] == pred[j]:
+                score += 0.5
+    return score
+
+def evaluate_auc(model, dataset, args):
+    [train, valid, test, usernum, itemnum] = copy.deepcopy(dataset)
+    
+    sampler = WarpSampler(
+        test, usernum, itemnum, batch_size=args.batch_size, maxlen=args.maxlen, n_workers=8
+    )
+
+    num_batch = (len(test) - 1) // args.batch_size + 1
+
+    pos_num = 0
+    neg_num = 0
+
+    for step in range(
+            num_batch
+        ):
+
+        u, seq, pos, neg = np.array(u), np.array(seq), np.array(pos), np.array(neg)
+        pos_logits, neg_logits, causal_mask = model(u, seq, pos, neg)
+        pos_logits = pos_logits.view([-1, pos_logits.size(-1)])
+        neg_logits = neg_logits.view([-1, neg_logits.size(-1)])
+        pos_labels, neg_labels = torch.ones(pos_logits.shape, device=args.device), torch.zeros(
+                neg_logits.shape, device=args.device
+            )
+        merge_y_pred = torch.cat([pos_logits, neg_logits],dim=0).numpy().tolist()
+        merge_y = torch.cat([pos_labels, neg_labels],dim=0).numpy().tolist()
+
+        auc = auc_calc(merge_y, merge_y_pred)
+        pos_num += sum(merge_y)
+        neg_num += len(merge_y) - pos_num
+        
+
 
     return NDCG / valid_user, HT / valid_user
